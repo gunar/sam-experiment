@@ -38,10 +38,9 @@ const DB = {
 const sendMsgToClient = x => console.log(`Message to client: ${x}`)
 
 function nap() {
-  const {tasks} = DB
-  const ongoingTasks = tasks.filter(task => Boolean(task.currentStep !== undefined))
-  ongoingTasks.forEach((task, id) => {
+  DB.tasks.forEach((task, id,array) => {
     const {playbookId, currentStep} = task
+    if (currentStep === undefined) return
     const step = DB.steps[currentStep]
     if (step.type === CLIENT_MESSAGE) {
       sendMsgToClient(step.value)
@@ -51,10 +50,11 @@ function nap() {
 }
 
 function present(data) {
+  console.log('present', data)
   const {task} = data
   if (task) {
     let {id} = task
-    const newTask = Boolean(id)
+    const newTask = Boolean(id === undefined)
     if (newTask) {
       DB.tasks.push(task)
     } else {
@@ -65,16 +65,16 @@ function present(data) {
   nap()
 }
 
-// Start the task
+// Start a new task
 present({
   task: {
-    id: 0,
     currentStep: 0,
   }
 })
 
 // simulate client input
 setTimeout(() => {
+  console.log("Client: hi")
   present({ task: {
     id: 0,
   } })
