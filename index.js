@@ -72,3 +72,10 @@ present({
     currentStep: 0,
   }
 })
+
+// simulate client input
+setTimeout(() => {
+  present({ task: {
+    id: 0,
+  } })
+}, 500)
