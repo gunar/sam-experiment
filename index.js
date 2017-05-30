@@ -21,46 +21,48 @@ const DB = {
       value: 'Thank you',
     },
   ],
-  playbooks: [
-    // Id: 0
-    {
-      steps: [1, 2, 3],
-    }
-  ],
   tasks: [
     // Id: 0
     {
-      playbookId: 555,
+    },
+    // Id: 1
+    {
     }
   ],
 }
-const state = x => {
-  console.log(x)
-  // const output = model
-  // view(output)
-  // nap()
+
+const sendMsgToClient = x => console.log(`Message to client: ${x}`)
+
+function nap() {
+  const {tasks} = DB
+  const ongoingTasks = tasks.filter(task => Boolean(task.currentStep !== undefined))
+  ongoingTasks.forEach((task, id) => {
+    const {playbookId, currentStep} = task
+    const step = DB.steps[currentStep]
+    if (step.type === CLIENT_INFORMATION) { sendMsgToClient(step.value) }
+    DB.tasks[id].currentStep++
+  })
 }
 
-const present = data => {
+function present(data) {
   const {task} = data
   if (task) {
     let {id} = task
     const newTask = Boolean(id)
     if (newTask) {
       DB.tasks.push(task)
-      // get id if newly created task
-      id = DB.tasks.length - 1
     } else {
+      delete task.id
       Object.assign(DB.tasks[id], task)
     }
-    state(DB.tasks[id])
   }
+  nap()
 }
 
 // Start the task
 present({
   task: {
-    id: 1,
-    currentStepId: 1,
+    id: 0,
+    currentStep: 0,
   }
 })
