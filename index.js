@@ -1,23 +1,27 @@
 'use strict'
 
-const CLIENT_QUESTION = Symbol()
-const CLIENT_INFORMATION = Symbol()
+const CLIENT_INPUT = Symbol()
+const CLIENT_MESSAGE = Symbol()
 
 const DB = {
   steps: [
     // Id: 0
     {
-      type: CLIENT_INFORMATION,
+      type: CLIENT_MESSAGE,
       value: 'Hello Client, and welcome.'
     },
     // Id: 1
     {
-      type: CLIENT_QUESTION,
+      type: CLIENT_MESSAGE,
       value: 'What would you like to have for dinner?',
     },
     // Id: 2
     {
-      type: CLIENT_INFORMATION,
+      type: CLIENT_INPUT,
+    },
+    // Id: 3
+    {
+      type: CLIENT_MESSAGE,
       value: 'Thank you',
     },
   ],
@@ -39,8 +43,10 @@ function nap() {
   ongoingTasks.forEach((task, id) => {
     const {playbookId, currentStep} = task
     const step = DB.steps[currentStep]
-    if (step.type === CLIENT_INFORMATION) { sendMsgToClient(step.value) }
-    DB.tasks[id].currentStep++
+    if (step.type === CLIENT_MESSAGE) {
+      sendMsgToClient(step.value)
+      present({ task: { id, currentStep: currentStep + 1, } })
+    }
   })
 }
 
