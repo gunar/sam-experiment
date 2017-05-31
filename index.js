@@ -25,16 +25,8 @@ const DB = {
       value: 'Got it! Thank you',
     },
   ],
-  tasks: [
-    // Id: 0
-    {
-    },
-    // Id: 1
-    {
-    }
-  ],
-  dataFields: [
-  ],
+  tasks: [ ],
+  dataFields: [ ],
 }
 
 const sendMsgToClient = x => console.log(`Message to client: ${x}`)
@@ -106,7 +98,7 @@ const consolePrintDB = () => console.log(JSON.stringify({DB}, undefined, 2))
 newTask()
 
 setTimeout(() => {
-  onClientInput({taskId: 2, value: 'Chicken'})
+  onClientInput({taskId: 0, value: 'Chicken'})
 }, 500)
 
 setTimeout(() => {
