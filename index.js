@@ -101,12 +101,16 @@ const onClientInput = ({taskId, value}) =>
 
 const consolePrintDB = () => console.log(JSON.stringify({DB}, undefined, 2))
 
-newTask()
+function init() {
+  newTask()
 
-setTimeout(() => {
-  onClientInput({taskId: 0, value: 'Chicken'})
-}, 500)
+  setTimeout(() => {
+    onClientInput({taskId: 0, value: 'Chicken'})
+  }, 500)
 
-setTimeout(() => {
-  consolePrintDB()
-}, 600)
+  setTimeout(() => {
+    consolePrintDB()
+  }, 600)
+}
+
+init()
