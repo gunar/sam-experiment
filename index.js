@@ -54,10 +54,9 @@ const dataFieldSchema = new Schema({
       if (step.type !== CLIENT_INPUT) {
         throw Error('Cant create a DataField for a non CLIENT_INPUT step')
       }
-      task.currentStep++
-      await task.save()
     },
   },
+  step: Number,
   value: String,
 })
 dataFieldSchema.post('save', state)
@@ -66,31 +65,44 @@ const DataField = mongoose.model('DataField', dataFieldSchema)
 const sendMsgToClient = x => console.log(`Bot: ${x}`)
 
 async function nap(lastUpdatedInstance) {
-  if (lastUpdatedInstance instanceof Task)
-    await nap.processTask(lastUpdatedInstance)
+  await nap.processTasks()
 }
 
-nap.processTask = async (task) => {
-  const step = await Step.findOne({ index: task.currentStep })
-  if (!step) return
-  if (step.type === CLIENT_MESSAGE) {
-    // TODO: this is a side-effect, and does to obey V=S(M)
-    sendMsgToClient(step.value)
-    task.currentStep++
-    await task.save()
+nap.processTasks = async () => {
+  const tasks = await Task.find({ currentStep: { $ne: null } })
+  for (const task of tasks) {
+    const step = await Step.findOne({ index: task.currentStep })
+    if (!step) continue
+    if (step.type === CLIENT_MESSAGE) {
+      // TODO: this is a side-effect, and does to obey V=S(M)
+      sendMsgToClient(step.value)
+      task.currentStep++
+      await task.save()
+    }
+    if (step.type === CLIENT_INPUT) {
+      const dataField = await DataField.find({
+        taskId: task._id,
+        step: task.currentStep,
+      })
+      const hasBeenAnswered = Boolean(dataField.length > 0)
+      if (hasBeenAnswered) {
+        task.currentStep++
+        await task.save()
+      }
+    }
   }
 }
 
-function state() {
+async function state() {
   // TODO
 
-  const lastUpdatedInstance = this
-  nap(lastUpdatedInstance)
+  await nap()
 }
 
-const onClientInput = ({taskId, value}) => {
+const onClientInput = async ({taskId, value}) => {
   console.log(`Client: ${value}`)
-  DataField.create({ taskId, value })
+  const task = await Task.findById(taskId)
+  DataField.create({ taskId, value, step: task.currentStep })
 }
 
 const consolePrintDB = () => console.log(JSON.stringify({DB}, undefined, 2))
@@ -131,8 +143,8 @@ async function init() {
 
   // run
   const task = await Task.create({ currentStep: 0 })
-  await sleep(500)
-  onClientInput({taskId: task._id, value: 'Chicken'})
+  await sleep(1000)
+  await onClientInput({taskId: task._id, value: 'Chicken'})
 }
 
 init()
