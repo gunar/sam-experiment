@@ -43,7 +43,7 @@ DB.newDataField = input => {
 }
 
 const sendMsgToClient = x => console.log(`Message to client: ${x}`)
-const merge = (to, from) => Object.assign({}, to, from)
+const mergeInto = (to, from) => Object.assign(to, from)
 
 function nap() {
   nap.processTasks()
@@ -81,7 +81,7 @@ present.task = input => {
     DB.tasks.push(input)
   } else {
     delete input.id
-    DB.tasks[id] = merge(DB.tasks[id], input)
+    mergeInto(DB.tasks[id], input)
   }
 }
 
