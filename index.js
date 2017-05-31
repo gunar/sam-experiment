@@ -1,7 +1,7 @@
 'use strict'
 
-const CLIENT_INPUT = Symbol()
-const CLIENT_MESSAGE = Symbol()
+const CLIENT_INPUT = 'CLIENT_INPUT'
+const CLIENT_MESSAGE = 'CLIENT_MESSAGE'
 
 const DB = {
   steps: [
@@ -22,7 +22,7 @@ const DB = {
     // Id: 3
     {
       type: CLIENT_MESSAGE,
-      value: 'Thank you',
+      value: 'Got it! Thank you',
     },
   ],
   tasks: [
@@ -32,6 +32,8 @@ const DB = {
     // Id: 1
     {
     }
+  ],
+  dataFields: [
   ],
 }
 
@@ -54,12 +56,32 @@ function present(data) {
   const {task} = data
   if (task) {
     let {id} = task
-    const newTask = Boolean(id === undefined)
-    if (newTask) {
+    const isNew = Boolean(id === undefined)
+    if (isNew) {
       DB.tasks.push(task)
     } else {
+      if (DB.steps[task.currentStep] == undefined) return 'rejected'
       delete task.id
       Object.assign(DB.tasks[id], task)
+    }
+  }
+  const {dataField} = data
+  if (dataField) {
+    let {id} = dataField
+    const isNew = Boolean(id === undefined)
+    if (isNew) {
+      const {taskId} = dataField
+      const task = DB.tasks[taskId]
+      if (DB.steps[task.currentStep].type !== CLIENT_INPUT) return 'rejected'
+      DB.dataFields.push(dataField)
+      present({
+        task: {
+          id: taskId,
+          currentStep: task.currentStep + 1,
+        }
+      })
+    } else {
+      // TODO
     }
   }
   nap()
@@ -74,8 +96,15 @@ present({
 
 // simulate client input
 setTimeout(() => {
-  console.log("Client: hi")
-  present({ task: {
-    id: 0,
-  } })
+  present({
+    dataField: {
+      taskId: 2,
+      value: 'Chicken',
+    }
+  })
 }, 500)
+
+// present final DB
+setTimeout(() => {
+  console.log(JSON.stringify({DB}, undefined, 2))
+}, 600)
