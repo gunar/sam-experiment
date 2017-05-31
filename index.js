@@ -38,6 +38,7 @@ const DB = {
 }
 
 const sendMsgToClient = x => console.log(`Message to client: ${x}`)
+const merge = (to, from) => Object.assign({}, to, from)
 
 function nap() {
   DB.tasks.forEach((task, id) => {
@@ -51,38 +52,45 @@ function nap() {
   })
 }
 
+const processTask = input => {
+  const {id} = input
+  const isNew = Boolean(id === undefined)
+  if (isNew) {
+    DB.tasks.push(input)
+  } else {
+    delete input.id
+    DB.tasks[id] = merge(DB.tasks[id], input)
+  }
+}
+
+const processDataField = dataField => {
+  let {id} = dataField
+  const isNew = Boolean(id === undefined)
+  if (isNew) {
+    const {taskId} = dataField
+    const task = DB.tasks[taskId]
+    if (DB.steps[task.currentStep].type !== CLIENT_INPUT) return 'rejected'
+    DB.dataFields.push(dataField)
+    present({
+      task: {
+        id: taskId,
+        currentStep: task.currentStep + 1,
+      }
+    })
+  } else {
+    // TODO
+  }
+}
+
 function present(data) {
   console.log('present', data)
+
   const {task} = data
-  if (task) {
-    let {id} = task
-    const isNew = Boolean(id === undefined)
-    if (isNew) {
-      DB.tasks.push(task)
-    } else {
-      delete task.id
-      Object.assign(DB.tasks[id], task)
-    }
-  }
+  if (task !== undefined) processTask(task)
+
   const {dataField} = data
-  if (dataField) {
-    let {id} = dataField
-    const isNew = Boolean(id === undefined)
-    if (isNew) {
-      const {taskId} = dataField
-      const task = DB.tasks[taskId]
-      if (DB.steps[task.currentStep].type !== CLIENT_INPUT) return 'rejected'
-      DB.dataFields.push(dataField)
-      present({
-        task: {
-          id: taskId,
-          currentStep: task.currentStep + 1,
-        }
-      })
-    } else {
-      // TODO
-    }
-  }
+  if (dataField !== undefined) processDataField(dataField)
+
   nap()
 }
 
