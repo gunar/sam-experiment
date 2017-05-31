@@ -40,6 +40,10 @@ const taskSchema = new Schema({
   currentStep: { type: Number, default: 0 },
 })
 taskSchema.post('save', state)
+taskSchema.methods.moveForwardOneStep = async function () {
+  this.currentStep++
+  await this.save()
+}
 const Task = mongoose.model('Task', taskSchema)
 
 // DATAFIELD -----------------------------------------
@@ -76,8 +80,7 @@ nap.processTasks = async () => {
     if (step.type === CLIENT_MESSAGE) {
       // TODO: this is a side-effect, and does to obey V=S(M)
       sendMsgToClient(step.value)
-      task.currentStep++
-      await task.save()
+      await task.moveForwardOneStep()
     }
     if (step.type === CLIENT_INPUT) {
       const dataField = await DataField.find({
@@ -86,8 +89,7 @@ nap.processTasks = async () => {
       })
       const hasBeenAnswered = Boolean(dataField.length > 0)
       if (hasBeenAnswered) {
-        task.currentStep++
-        await task.save()
+        await task.moveForwardOneStep()
       }
     }
   }
