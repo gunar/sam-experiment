@@ -42,6 +42,10 @@ DB.newDataField = input => {
   })
 }
 
+DB.newTask = input => {
+  DB.tasks.push(input)
+}
+
 const sendMsgToClient = x => console.log(`Message to client: ${x}`)
 const mergeInto = (to, from) => Object.assign(to, from)
 
@@ -65,33 +69,38 @@ nap.processTasks = () => {
 function present(data) {
   console.log('present', data)
 
-  const {task} = data
-  if (task !== undefined) present.task(task)
-
-  const {dataField} = data
-  if (dataField !== undefined) present.dataField(dataField)
+  present.task(data)
+  present.dataField(data)
 
   nap()
 }
 
-present.task = input => {
-  const {id} = input
-  const isNew = Boolean(id === undefined)
-  if (isNew) {
-    DB.tasks.push(input)
-  } else {
+const createSubPresent = ({fieldName, ifNew, ifUpdate}) =>
+  data => {
+    const input = data[fieldName]
+    if (input === undefined) return
+    const {id} = input
+    const isNew = Boolean(id === undefined)
+    if (isNew) { return ifNew(input) }
+    else { return ifUpdate(input) }
+  }
+
+present.task = createSubPresent({
+  fieldName: 'task',
+  ifNew: DB.newTask,
+  ifUpdate(input) {
+    const id = input.id
     delete input.id
     mergeInto(DB.tasks[id], input)
   }
-}
+})
 
-
-present.dataField = dataField => {
-  let {id} = dataField
-  const isNew = Boolean(id === undefined)
-  if (isNew) { DB.newDataField(dataField) }
-  else { /* TODO */ }
-}
+present.dataField = createSubPresent({
+  fieldName: 'dataField',
+  ifNew: DB.newDataField,
+  // TODO
+  ifUpdate: () => null, 
+})
 
 const newTask = () =>
   present({ task: { currentStep: 0 } })
