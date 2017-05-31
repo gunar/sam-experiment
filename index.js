@@ -74,6 +74,7 @@ nap.processTask = async (task) => {
   const step = await Step.findOne({ index: task.currentStep })
   if (!step) return
   if (step.type === CLIENT_MESSAGE) {
+    // TODO: this is a side-effect, and does to obey V=S(M)
     sendMsgToClient(step.value)
     task.currentStep++
     await task.save()
