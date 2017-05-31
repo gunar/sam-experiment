@@ -29,33 +29,7 @@ const DB = {
   dataFields: [ ],
 }
 
-const sendMsgToClient = x => console.log(`Message to client: ${x}`)
-const merge = (to, from) => Object.assign({}, to, from)
-
-function nap() {
-  DB.tasks.forEach((task, id) => {
-    const {playbookId, currentStep} = task
-    if (currentStep === undefined) return
-    const step = DB.steps[currentStep]
-    if (step && step.type === CLIENT_MESSAGE) {
-      sendMsgToClient(step.value)
-      present({ task: { id, currentStep: currentStep + 1, } })
-    }
-  })
-}
-
-const processTask = input => {
-  const {id} = input
-  const isNew = Boolean(id === undefined)
-  if (isNew) {
-    DB.tasks.push(input)
-  } else {
-    delete input.id
-    DB.tasks[id] = merge(DB.tasks[id], input)
-  }
-}
-
-const newDataField = input => {
+DB.newDataField = input => {
   const {taskId} = input
   const task = DB.tasks[taskId]
   if (DB.steps[task.currentStep].type !== CLIENT_INPUT) return 'rejected'
@@ -68,23 +42,55 @@ const newDataField = input => {
   })
 }
 
-const processDataField = dataField => {
-  let {id} = dataField
-  const isNew = Boolean(id === undefined)
-  if (isNew) { newDataField(dataField) }
-  else { /* TODO */ }
+const sendMsgToClient = x => console.log(`Message to client: ${x}`)
+const merge = (to, from) => Object.assign({}, to, from)
+
+function nap() {
+  nap.processTasks()
 }
+
+nap.processTasks = () => {
+  DB.tasks.forEach((task, id) => {
+    const {playbookId, currentStep} = task
+    if (currentStep === undefined) return
+    const step = DB.steps[currentStep]
+    if (step && step.type === CLIENT_MESSAGE) {
+      sendMsgToClient(step.value)
+      present({ task: { id, currentStep: currentStep + 1, } })
+    }
+  })
+}
+
 
 function present(data) {
   console.log('present', data)
 
   const {task} = data
-  if (task !== undefined) processTask(task)
+  if (task !== undefined) present.task(task)
 
   const {dataField} = data
-  if (dataField !== undefined) processDataField(dataField)
+  if (dataField !== undefined) present.dataField(dataField)
 
   nap()
+}
+
+present.task = input => {
+  const {id} = input
+  const isNew = Boolean(id === undefined)
+  if (isNew) {
+    DB.tasks.push(input)
+  } else {
+    delete input.id
+    DB.tasks[id] = merge(DB.tasks[id], input)
+  }
+}
+
+
+present.dataField = dataField => {
+  let {id} = dataField
+  const isNew = Boolean(id === undefined)
+  if (isNew) { DB.newDataField(dataField) }
+  else { /* TODO */ }
 }
 
 const newTask = () =>
