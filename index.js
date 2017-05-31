@@ -63,23 +63,24 @@ const processTask = input => {
   }
 }
 
+const newDataField = input => {
+  const {taskId} = input
+  const task = DB.tasks[taskId]
+  if (DB.steps[task.currentStep].type !== CLIENT_INPUT) return 'rejected'
+  DB.dataFields.push(input)
+  present({
+    task: {
+      id: taskId,
+      currentStep: task.currentStep + 1,
+    }
+  })
+}
+
 const processDataField = dataField => {
   let {id} = dataField
   const isNew = Boolean(id === undefined)
-  if (isNew) {
-    const {taskId} = dataField
-    const task = DB.tasks[taskId]
-    if (DB.steps[task.currentStep].type !== CLIENT_INPUT) return 'rejected'
-    DB.dataFields.push(dataField)
-    present({
-      task: {
-        id: taskId,
-        currentStep: task.currentStep + 1,
-      }
-    })
-  } else {
-    // TODO
-  }
+  if (isNew) { newDataField(dataField) }
+  else { /* TODO */ }
 }
 
 function present(data) {
@@ -94,24 +95,20 @@ function present(data) {
   nap()
 }
 
-// Start a new task
-present({
-  task: {
-    currentStep: 0,
-  }
-})
+const newTask = () =>
+  present({ task: { currentStep: 0 } })
 
-// simulate client input
+const onClientInput = ({taskId, value}) => 
+  present({ dataField: { taskId, value } })
+
+const consolePrintDB = () => console.log(JSON.stringify({DB}, undefined, 2))
+
+newTask()
+
 setTimeout(() => {
-  present({
-    dataField: {
-      taskId: 2,
-      value: 'Chicken',
-    }
-  })
+  onClientInput({taskId: 2, value: 'Chicken'})
 }, 500)
 
-// present final DB
 setTimeout(() => {
-  console.log(JSON.stringify({DB}, undefined, 2))
+  consolePrintDB()
 }, 600)
