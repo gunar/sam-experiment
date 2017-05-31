@@ -1,5 +1,8 @@
 'use strict'
+
+const assert = require('assert')
 const mongoose = require('mongoose')
+
 mongoose.Promise = global.Promise
 mongoose.connect('mongodb://localhost/test')
 
@@ -16,6 +19,7 @@ const CLIENT_MESSAGE = 'CLIENT_MESSAGE'
 // original values: https://stackoverflow.com/questions/18192804/mongoose-get-db-value-in-pre-save-hook#18195850
 
 // STEP -----------------------------------------
+const UNIQUE_STEP_INDEX_ERROR = Error('step.index should be unique')
 const stepSchema = new Schema({
   type: { type: String, required: true, enum: [CLIENT_INPUT, CLIENT_MESSAGE] },
   value: String,
@@ -24,7 +28,7 @@ const stepSchema = new Schema({
     required: true,
     validate: async function (v) {
       const count = await Step.count({ index: this.index })
-      if (count > 0) throw Error('step.index should be unique')
+      if (count > 0) throw UNIQUE_STEP_INDEX_ERROR
     },
   },
 })
@@ -119,7 +123,10 @@ async function init() {
       }),
     ])
   }
-  catch (e) {}
+  catch (e) {
+    // Steps already created in DB
+    assert.strictEqual(e.errors.index.reason.message, UNIQUE_STEP_INDEX_ERROR.message)
+  }
 
   // run
   const task = await Task.create({ currentStep: 0 })
