@@ -42,8 +42,10 @@ const Task = mongoose.model('Task', taskSchema)
 const dataFieldSchema = new Schema({
   taskId: {
     type: ObjectId, 
-    validator: async function (v) {
-      const step = await Step.findById(v)
+    validate: async function (v) {
+      const task = await Task.findById(this.taskId)
+      const step = await Step.findOne({ index: task.currentStep })
+      if (!step) return
 
       if (step.type !== CLIENT_INPUT) {
         throw Error('Cant create a DataField for a non CLIENT_INPUT step')
@@ -57,8 +59,7 @@ const dataFieldSchema = new Schema({
 dataFieldSchema.post('save', state)
 const DataField = mongoose.model('DataField', dataFieldSchema)
 
-const sendMsgToClient = x => console.log(`Message to client: ${x}`)
-
+const sendMsgToClient = x => console.log(`Bot: ${x}`)
 
 async function nap(lastUpdatedInstance) {
   if (lastUpdatedInstance instanceof Task)
@@ -67,6 +68,7 @@ async function nap(lastUpdatedInstance) {
 
 nap.processTask = async (task) => {
   const step = await Step.findOne({ index: task.currentStep })
+  if (!step) return
   if (step.type === CLIENT_MESSAGE) {
     sendMsgToClient(step.value)
     task.currentStep++
@@ -81,8 +83,10 @@ function state() {
   nap(lastUpdatedInstance)
 }
 
-const onClientInput = ({taskId, value}) => 
+const onClientInput = ({taskId, value}) => {
+  console.log(`Client: ${value}`)
   DataField.create({ taskId, value })
+}
 
 const consolePrintDB = () => console.log(JSON.stringify({DB}, undefined, 2))
 
