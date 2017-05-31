@@ -1,125 +1,126 @@
 'use strict'
+const mongoose = require('mongoose')
+mongoose.Promise = global.Promise
+mongoose.connect('mongodb://localhost/test')
+
+const { Schema } = mongoose
+const {
+  Mixed,
+  ObjectId,
+} = Schema.Types
 
 const CLIENT_INPUT = 'CLIENT_INPUT'
 const CLIENT_MESSAGE = 'CLIENT_MESSAGE'
 
-const DB = {
-  steps: [
-    // Id: 0
-    {
-      type: CLIENT_MESSAGE,
-      value: 'Hello Client, and welcome.'
-    },
-    // Id: 1
-    {
-      type: CLIENT_MESSAGE,
-      value: 'What would you like to have for dinner?',
-    },
-    // Id: 2
-    {
-      type: CLIENT_INPUT,
-    },
-    // Id: 3
-    {
-      type: CLIENT_MESSAGE,
-      value: 'Got it! Thank you',
-    },
-  ],
-  tasks: [ ],
-  dataFields: [ ],
-}
+// this.modifiedPaths()
+// original values: https://stackoverflow.com/questions/18192804/mongoose-get-db-value-in-pre-save-hook#18195850
 
-DB.newDataField = input => {
-  const {taskId} = input
-  const task = DB.tasks[taskId]
-  if (DB.steps[task.currentStep].type !== CLIENT_INPUT) return 'rejected'
-  DB.dataFields.push(input)
-  present({
-    task: {
-      id: taskId,
-      currentStep: task.currentStep + 1,
-    }
-  })
-}
+// STEP -----------------------------------------
+const stepSchema = new Schema({
+  type: { type: String, required: true, enum: [CLIENT_INPUT, CLIENT_MESSAGE] },
+  value: String,
+  index: {
+    type: Number,
+    required: true,
+    validate: async function (v) {
+      const count = await Step.count({ index: this.index })
+      if (count > 0) throw Error('step.index should be unique')
+    },
+  },
+})
+stepSchema.post('save', state)
+const Step = mongoose.model('Step', stepSchema)
 
-DB.newTask = input => {
-  DB.tasks.push(input)
-}
+// TASK -----------------------------------------
+const taskSchema = new Schema({
+  currentStep: { type: Number, default: 0 },
+})
+taskSchema.post('save', state)
+const Task = mongoose.model('Task', taskSchema)
+
+// DATAFIELD -----------------------------------------
+const dataFieldSchema = new Schema({
+  taskId: {
+    type: ObjectId, 
+    validator: async function (v) {
+      const step = await Step.findById(v)
+
+      if (step.type !== CLIENT_INPUT) {
+        throw Error('Cant create a DataField for a non CLIENT_INPUT step')
+      }
+      task.currentStep++
+      await task.save()
+    },
+  },
+  value: String,
+})
+dataFieldSchema.post('save', state)
+const DataField = mongoose.model('DataField', dataFieldSchema)
 
 const sendMsgToClient = x => console.log(`Message to client: ${x}`)
-const mergeInto = (to, from) => Object.assign(to, from)
 
-function nap() {
-  nap.processTasks()
+
+async function nap(lastUpdatedInstance) {
+  if (lastUpdatedInstance instanceof Task)
+    await nap.processTask(lastUpdatedInstance)
 }
 
-nap.processTasks = () => {
-  DB.tasks.forEach((task, id) => {
-    const {playbookId, currentStep} = task
-    if (currentStep === undefined) return
-    const step = DB.steps[currentStep]
-    if (step && step.type === CLIENT_MESSAGE) {
-      sendMsgToClient(step.value)
-      present({ task: { id, currentStep: currentStep + 1, } })
-    }
-  })
-}
-
-
-function present(data) {
-  console.log('present', data)
-
-  present.task(data)
-  present.dataField(data)
-
-  nap()
-}
-
-const createSubPresent = ({fieldName, ifNew, ifUpdate}) =>
-  data => {
-    const input = data[fieldName]
-    if (input === undefined) return
-    const {id} = input
-    const isNew = Boolean(id === undefined)
-    if (isNew) { return ifNew(input) }
-    else { return ifUpdate(input) }
+nap.processTask = async (task) => {
+  const step = await Step.findOne({ index: task.currentStep })
+  if (step.type === CLIENT_MESSAGE) {
+    sendMsgToClient(step.value)
+    task.currentStep++
+    await task.save()
   }
+}
 
-present.task = createSubPresent({
-  fieldName: 'task',
-  ifNew: DB.newTask,
-  ifUpdate(input) {
-    const id = input.id
-    delete input.id
-    mergeInto(DB.tasks[id], input)
-  }
-})
-
-present.dataField = createSubPresent({
-  fieldName: 'dataField',
-  ifNew: DB.newDataField,
+function state() {
   // TODO
-  ifUpdate: () => null, 
-})
 
-const newTask = () =>
-  present({ task: { currentStep: 0 } })
+  const lastUpdatedInstance = this
+  nap(lastUpdatedInstance)
+}
 
 const onClientInput = ({taskId, value}) => 
-  present({ dataField: { taskId, value } })
+  DataField.create({ taskId, value })
 
 const consolePrintDB = () => console.log(JSON.stringify({DB}, undefined, 2))
 
-function init() {
-  newTask()
+const sleep = ms =>
+  new Promise(res =>
+    setTimeout(res, ms))
 
-  setTimeout(() => {
-    onClientInput({taskId: 0, value: 'Chicken'})
-  }, 500)
+async function init() {
+  // prepare database
+  try {
+    await Promise.all([
+      Step.create({
+        index: 0,
+        type: CLIENT_MESSAGE,
+        value: 'Hello Client, and welcome.',
+      }),
+      Step.create({
+        index: 1,
+        type: CLIENT_MESSAGE,
+        value: 'What would you like to have for dinner?',
+      }),
+      Step.create({
+        index: 2,
+        type: CLIENT_INPUT,
+      }),
+      Step.create({
+        index: 3,
+        type: CLIENT_MESSAGE,
+        value: 'Got it! Thank you',
+      }),
+    ])
+  }
+  catch (e) {}
 
-  setTimeout(() => {
-    consolePrintDB()
-  }, 600)
+  // run
+  const task = await Task.create({ currentStep: 0 })
+  await sleep(500)
+  onClientInput({taskId: task._id, value: 'Chicken'})
 }
 
 init()
