@@ -40,11 +40,11 @@ const DB = {
 const sendMsgToClient = x => console.log(`Message to client: ${x}`)
 
 function nap() {
-  DB.tasks.forEach((task, id,array) => {
+  DB.tasks.forEach((task, id) => {
     const {playbookId, currentStep} = task
     if (currentStep === undefined) return
     const step = DB.steps[currentStep]
-    if (step.type === CLIENT_MESSAGE) {
+    if (step && step.type === CLIENT_MESSAGE) {
       sendMsgToClient(step.value)
       present({ task: { id, currentStep: currentStep + 1, } })
     }
@@ -60,7 +60,6 @@ function present(data) {
     if (isNew) {
       DB.tasks.push(task)
     } else {
-      if (DB.steps[task.currentStep] == undefined) return 'rejected'
       delete task.id
       Object.assign(DB.tasks[id], task)
     }
