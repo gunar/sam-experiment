@@ -26,7 +26,7 @@ const stepSchema = new Schema({
   index: {
     type: Number,
     required: true,
-    validate: async function (v) {
+    validate: async function () {
       const count = await Step.count({ index: this.index })
       if (count > 0) throw UNIQUE_STEP_INDEX_ERROR
     },
@@ -41,6 +41,14 @@ const taskSchema = new Schema({
     type: Number,
     default: 0,
     validate: async function() {
+      const endStep = (await Step.count()) -1
+      const clientIsBeingEngaged = Boolean(await Task.count({
+        currentStep: { $lt: endStep },
+        _id: { $ne: this._id },
+      }) > 0)
+      if (clientIsBeingEngaged) {
+        throw Error('Another task is already talking with the client')
+      }
       const step = await Step.findOne({ index: this.currentStep })
       if (step && step.type === CLIENT_MESSAGE) {
         // if this throws, present() fails thus not changing current step
@@ -124,6 +132,9 @@ const sleep = ms =>
 
 async function init() {
   // prepare database
+  await Task.remove()
+  await Step.remove()
+  await DataField.remove()
   try {
     await Promise.all([
       Step.create({
@@ -153,9 +164,11 @@ async function init() {
   }
 
   // run
-  const task = await Task.create({ currentStep: 0 })
+  const task1 = await Task.create({ currentStep: 0 })
+  await Task.create({ currentStep: 0 }).catch(x =>
+    console.error(x.errors.currentStep.reason))
   await sleep(1000)
-  await onClientInput({taskId: task._id, value: 'Chicken'})
+  await onClientInput({taskId: task1._id, value: 'Chicken'})
 }
 
 init()
