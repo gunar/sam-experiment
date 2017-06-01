@@ -104,9 +104,10 @@ nap.processTasks = async () => {
 }
 
 async function state() {
-  // TODO
-
   await nap()
+
+  // TODO
+  // update view
 }
 
 const onClientInput = async ({taskId, value}) => {
